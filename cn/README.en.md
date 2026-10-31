@@ -37,7 +37,7 @@
 | X / Twitter DMs | Full workflow supported | Parses `content-desc` on Compose nodes | Tested with version 12.25 in Chinese; the English UI has not been verified |
 | Feishu / Lark | OCR fallback verified on a real device | Reads message bubble bounds through accessibility, then extracts text with offline ML Kit OCR | Message text is custom-rendered and absent from the accessibility tree. Since v1.3, each bubble is processed with OCR; read status is used to identify the sender |
 | WhatsApp | One-to-one chats (beta) | Accessibility nodes | One-to-one chats only; group chats are not read and WhatsApp is never screenshotted; replies follow the language of the other person's latest message. Reading rules by [@smgonthebeat](https://github.com/smgonthebeat) (#73), verified against WhatsApp 2.26.38.73 recordings |
-| Any other app | Manual capture supported | Full-screen OCR via "Scan screen once" in the overlay menu | Manual only; all text is treated as coming from the other person, with a notice in the panel |
+| Any other app, including WeChat and Soul | Manual capture supported | Full-screen OCR via "Scan screen once" in the overlay menu | Manual only; all text is treated as coming from the other person, with a notice in the panel. The app no longer refuses these packages up front. If the system hides the UI or blocks screenshots, capture fails and the panel says why |
 | Desktop / web | Planned | Screenshots with OCR / vision | Same core, different capture method |
 
 Jev only reads conversations on your own device that you are authorized to view. It is not designed to target any particular platform.
@@ -220,7 +220,7 @@ Requires JDK 17 and the Android SDK (platform 35 / build-tools 35).
 - **Group chats:** Analysis assumes a one-to-one conversation, so its interpretation of "the other person" and relationship settings may be inaccurate in groups.
 - **Chinese conversations:** Jev is trained primarily in English. Assessment questions are in English, while chat content stays in Chinese. For better calibration, label a set of your own real conversations; see `tools/jev/`.
 - **Knowledge base retrieval uses title and tag substring matching**, not semantic search. Tag notes carefully so they can be found. History is deduplicated by sender and exact message text, so the same person repeating the same message is recorded only once.
-- **OCR requires system permission to take screenshots:** Xiaomi / HyperOS may deny screenshot access to the accessibility service; the panel shows the reason when capture fails. Protected windows (`FLAG_SECURE`) cannot be captured.
+- **OCR requires system permission to take screenshots:** Xiaomi / HyperOS may deny screenshot access to the accessibility service; the panel shows the reason when capture fails. Protected windows (`FLAG_SECURE`) cannot be captured. WeChat (`com.tencent.mm`) and Soul (`cn.soulapp.android`) are no longer refused by package name; they use the same manual "Scan screen once" path as any other unadapted app.
 - **OCR only reads what is visible:** It cannot recover the hidden portion of a truncated message, and recognition errors are possible.
 - **Larger APK:** The bundled offline Chinese ML Kit model increases the APK size from about 12 MB to about 27 MB. Builds support `arm64-v8a` only.
 
