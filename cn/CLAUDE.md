@@ -6,7 +6,7 @@
 
 1. **不 hook、不 Xposed、不改目标 App、不读其数据库**。只用系统无障碍服务与截屏。
 2. **绝不自动发送消息**，绝不点任何 App 的发送按钮。填入输入框后停手。
-3. **只读目标 App 正常开放给无障碍服务的内容**：服务类名用本项目自己的包名；`accessibility_service_config.xml` 不加 `isAccessibilityTool`（本 App 不是辅助功能工具）；目标 App 隐藏控件树或开了防截屏，就视为不支持。
+3. **只读目标 App 正常开放给无障碍服务的内容**：服务类名用本项目自己的包名；`accessibility_service_config.xml` 不加 `isAccessibilityTool`（本 App 不是辅助功能工具）。不要按包名维护拒绝名单（微信、Soul 已取消这类拦截）。系统若隐藏控件树或禁止截屏，走现有失败提示，不要再弹「这个应用暂不支持」后直接退出。
 4. **不碰钱**：不触碰转账、红包、收款码相关任何界面元素。
 5. **路径全 ASCII**：Android 构建工具在 Windows 上不接受中文路径。项目只能在 `H:\ai_tool\jev-android`。
 6. **密钥不落盘、不进日志、不进 git**：OpenRouter key 从环境变量 `OPENROUTER_API_KEY` 读，或 App 加密设置项。任何文件里都不许出现 `sk-or-` 开头的字符串。

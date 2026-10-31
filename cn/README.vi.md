@@ -37,10 +37,10 @@
 | X / Twitter tin nhắn riêng | ✅ Hỗ trợ đầy đủ từ đầu đến cuối | Phân tích content-desc của node Compose | Đã kiểm thử trên 12.25, giao diện tiếng Trung; chưa xác minh giao diện tiếng Anh |
 | 飞书 / Lark | ✅ Dự phòng bằng OCR (đã xác minh trên thiết bị thật) | Đọc hình chữ nhật bong bóng bằng dịch vụ trợ năng + OCR tiếng Trung ngoại tuyến bằng ML Kit để nhận dạng nội dung chính | Nội dung chính tự vẽ không có trong cây trợ năng; từ 1.3, thực hiện OCR cho hình chữ nhật từng bong bóng; phân biệt tôi/đối phương theo trạng thái đã đọc |
 | WhatsApp | 🧪 Trò chuyện 1v1 | Đọc node bằng dịch vụ trợ năng | Chỉ đọc trò chuyện 1v1, không đọc nhóm, không chụp màn hình; trả lời theo ngôn ngữ tin nhắn mới nhất của đối phương. Quy tắc đọc của [@smgonthebeat](https://github.com/smgonthebeat) (#73), kiểm chứng với bản ghi WhatsApp 2.26.38.73 |
-| Ứng dụng khác chưa hỗ trợ | ✅ Thủ công | OCR toàn màn hình bằng “Nhận diện ảnh chụp một lần” trong menu cửa sổ nổi | Không tự động, không phân biệt tôi/đối phương (mọi nội dung đều được coi là lời của đối phương và được ghi rõ trong khung phân tích); không hỗ trợ ứng dụng ẩn nội dung giao diện hoặc chặn chụp màn hình |
+| Ứng dụng khác chưa hỗ trợ (gồm WeChat và Soul) | ✅ Thủ công | OCR toàn màn hình bằng “Nhận diện ảnh chụp một lần” trong menu cửa sổ nổi | Không tự động, không phân biệt tôi/đối phương (mọi nội dung đều được coi là lời của đối phương và được ghi rõ trong khung phân tích). Không còn từ chối theo tên gói; nếu hệ thống ẩn giao diện hoặc chặn chụp màn hình, nhận diện thất bại và khung phân tích nêu lý do |
 | Máy tính để bàn / web | ⏳ Đang lên kế hoạch | Ảnh chụp màn hình + OCR / thị giác | Cùng một lõi, chỉ thay đổi cách thu thập |
 
-Dự án này chỉ đọc nội dung chat trên thiết bị của chính bạn, nơi bạn có quyền xem và phiên bản hiện tại hỗ trợ; không đọc ứng dụng ẩn nội dung giao diện hoặc chặn chụp màn hình.
+Dự án này chỉ đọc nội dung chat trên thiết bị của chính bạn, nơi bạn có quyền xem. WeChat và Soul dùng được như các ứng dụng chưa có bộ thích ứng khác, không còn bị từ chối theo tên gói; nếu hệ thống ẩn nội dung hoặc chặn chụp màn hình, lần nhận diện đó sẽ thất bại và nêu lý do.
 
 > **Rủi ro khi sử dụng:** Dùng trợ lý trong các ứng dụng bên thứ ba như QQ, 飞书, X hoặc WhatsApp có thể không phù hợp với thỏa thuận người dùng của ứng dụng đó, tài khoản có thể bị hạn chế hoặc khóa. Hãy tự cân nhắc trước khi sử dụng.
 
@@ -211,7 +211,7 @@ JDK 17 + Android SDK (platform 35 / build-tools 35).
 - **OCR phụ thuộc vào quyền chụp màn hình của hệ thống**: dịch vụ trợ năng phải được hệ thống cho phép chụp màn hình; Xiaomi / HyperOS có thể từ chối (khung phân tích sẽ hiện lý do thất bại); không thể chụp cửa sổ được bảo vệ (`FLAG_SECURE`).
 - **OCR chỉ nhận diện được phần đang hiện trên màn hình**: không thể đọc phần bị cắt của tin nhắn dài; có thể có chữ sai.
 - **Kích thước gói tăng**: mô hình tiếng Trung ngoại tuyến của ML Kit làm APK tăng từ khoảng 12 MB lên khoảng 27 MB và chỉ build cho arm64-v8a.
-- **Không hỗ trợ ứng dụng ẩn nội dung giao diện hoặc chặn chụp màn hình**: trong các ứng dụng này, phiên bản hiện tại không thu thập, không chụp màn hình và không điền nội dung.
+- **Không đọc được khi hệ thống không cung cấp hình ảnh**: không còn từ chối trước theo tên gói (WeChat `com.tencent.mm`, Soul `cn.soulapp.android`). Hai ứng dụng này hiện bong bóng và dùng “Nhận diện ảnh chụp một lần” như các ứng dụng chưa thích ứng khác. Khi hệ thống ẩn cây trợ năng hoặc đặt `FLAG_SECURE`, việc thu thập thất bại và khung phân tích nêu lý do, không còn hiện “ứng dụng này tạm thời không hỗ trợ”.
 
 ---
 

@@ -74,8 +74,9 @@ open class ChatCaptureService : AccessibilityService() {
         }
     }
 
-    /** Adapted chat apps, keyed by package name. Apps in [BLOCKED_PKGS] are
-     *  never read at all (see [maybeCapture] / [onAccessibilityEvent]). */
+    /** Adapted chat apps, keyed by package name. Anything else — including
+     *  WeChat (`com.tencent.mm`) and Soul (`cn.soulapp.android`) — still gets
+     *  the idle bubble and manual 「截屏识别一次」. There is no package denylist. */
     private val adapters = listOf(QQAdapter(), XAdapter(), FeishuAdapter(), WhatsAppAdapter()).associateBy { it.pkg }
 
     /** Submit to the worker, ignoring rejection after the service is torn down
@@ -152,7 +153,7 @@ open class ChatCaptureService : AccessibilityService() {
     /** Read the live target, never the previous chat's cached/stabilized title. */
     private fun targetFor(root: AccessibilityNodeInfo): ConversationSession.Target? {
         val pkg = root.packageName?.toString() ?: return null
-        if (isBlocked(pkg) || pkg == packageName || pkg == "com.android.systemui" ||
+        if (pkg == packageName || pkg == "com.android.systemui" ||
             pkg.contains("launcher", true) || pkg == "com.miui.home") return null
         val adapter = adapters[pkg]
         var messagesSignature: String? = null
@@ -233,11 +234,6 @@ open class ChatCaptureService : AccessibilityService() {
      *  See [ocrSignature]: this is the brake on the OCR path. */
     private var lastOcrSignature: String = ""
 
-    /** Whether the "not supported" notice has been shown for the current visit
-     *  to a blocked app. Reset whenever another foreground is seen, so it
-     *  re-appears next visit but does not re-pop on every event. */
-    private var blockedNoticeShown = false
-
     override fun onServiceConnected() {
         super.onServiceConnected()
         prefs = Prefs(this)
@@ -306,15 +302,10 @@ open class ChatCaptureService : AccessibilityService() {
         // our own settings screens, the launcher, and the system UI.
         if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val fg = rootInActiveWindow?.packageName?.toString()
-            // Blocked apps: never read/screenshot/OCR/fill there, only show the
-            // one-time "not supported" notice and stop. Checked before the
-            // generic no-adapter branch.
-            if (isBlocked(fg)) { foregroundPkg = fg; showBlocked(auto = true); return }
             if (fg != null && fg !in adapters) {
                 val target = rootInActiveWindow?.let { targetFor(it) }
                 if (session.target != target) leaveConversation()
                 foregroundPkg = fg
-                blockedNoticeShown = false // left a blocked app → allow the notice again next visit
                 val drop = fg == packageName ||
                     fg.contains("launcher", ignoreCase = true) ||
                     fg == "com.miui.home" ||
@@ -343,11 +334,6 @@ open class ChatCaptureService : AccessibilityService() {
         main.removeCallbacks(confirmAwayHide)
         val root = rootInActiveWindow ?: run { leaveConversation(); overlay?.hide(); return }
         val pkg = root.packageName?.toString()
-        // Blocked apps — no tree read, no screenshot, no OCR, no fill. A
-        // content-changed / scrolled event there only re-shows the one-time
-        // notice (deduped); it must never reach an adapter or the OCR path.
-        if (isBlocked(pkg)) { showBlocked(auto = true); return }
-        blockedNoticeShown = false // any other foreground → allow the notice again next visit
         // Apps with no adapter are never handled automatically (v1.3 revision):
         // the only way in for them is the bubble menu's "截屏识别一次".
         val adapter = adapters[pkg] ?: run {
@@ -488,25 +474,6 @@ open class ChatCaptureService : AccessibilityService() {
         return if (m.contains("超时")) "生成超时" else m
     }
 
-    private fun isBlocked(pkg: String?): Boolean = pkg != null && pkg in BLOCKED_PKGS
-
-    /**
-     * Foreground is a blocked app: no node-tree read, no screenshot, no OCR, no
-     * fill. We only surface a one-time "not supported" notice. [auto] events
-     * (accessibility callbacks) show it once per visit — [blockedNoticeShown]
-     * dedupes them; a manual bubble tap ([auto] = false) always shows it. Never
-     * gated by the user's whitelist (it is an info notice, not a read).
-     */
-    private fun showBlocked(auto: Boolean) {
-        leaveConversation()
-        if (auto && blockedNoticeShown) return
-        blockedNoticeShown = true
-        // No popup panel there — take the overlay off entirely and show the
-        // reason once as a small transient toast.
-        overlay?.hide()
-        overlay?.toast(BLOCKED_MSG)
-    }
-
     /** A placeholder title an app shows only for a moment (e.g. X's "连接中…"
      *  right after opening a DM thread) — never a real conversation title.
      *  Blank/null counts too, so a caller can always fall back the same way. */
@@ -611,9 +578,6 @@ open class ChatCaptureService : AccessibilityService() {
     private fun ocrCaptureManual() {
         val root = rootInActiveWindow
         val pkg = root?.packageName?.toString() ?: foregroundPkg ?: activePkg ?: ""
-        // Blocked apps: a manual "截屏识别一次" must NOT take a screenshot there —
-        // just show the notice (a manual tap always shows it).
-        if (isBlocked(pkg)) { showBlocked(auto = false); return }
         if (pkg in NO_SCREENSHOT_PKGS) { overlay?.showError("这个应用里不使用截屏识别"); return }
         // Top bar text, if this app has one we can read; else the first OCR line.
         val title = root?.let {
@@ -917,19 +881,10 @@ open class ChatCaptureService : AccessibilityService() {
         /** Grace period before a "not a chat" read really leaves the conversation. */
         private const val LEAVE_CONFIRM_MS = 1200L
 
-        /** Apps that are never read: they protect their content against screen
-         *  reading or screenshots, so any capture attempt there is off-limits.
-         *  No adapter, no capture, only a one-time "not supported" notice. */
         /** Supported apps that are read through the node tree only and never
-         *  screenshotted: no OCR fallback, no manual "截屏识别一次". */
+         *  screenshotted: no OCR fallback, no manual "截屏识别一次".
+         *  This is a per-app capture choice (WhatsApp), not an environment block. */
         private val NO_SCREENSHOT_PKGS = setOf(WhatsAppRules.PACKAGE)
-
-        private val BLOCKED_PKGS = setOf("com.tencent.mm", "cn.soulapp.android")
-
-        /** Shown once per visit to a blocked app. Plain words, full-width
-         *  punctuation; steers the user to a supported app. */
-        private const val BLOCKED_MSG =
-            "这个应用暂不支持，请在别的软件上使用"
 
         /** How long a transient non-chat foreground must persist before the
          *  bubble is taken away (#18). */
